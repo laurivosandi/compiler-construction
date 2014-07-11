@@ -45,9 +45,11 @@ class Parser(object):
         """
         token, state = state.pop(lexer.TokenBoolean, lexer.TokenIdentifier, lexer.TokenIf, lexer.TokenNat)
         if isinstance(token, lexer.TokenBoolean):
+            # This is boolean constant
             expr = absy.Boolean(token.lexeme)
         elif isinstance(token, lexer.TokenIdentifier):
             if state.peek(lexer.TokenOpen):
+                # This is function application
                 state = state.skip(lexer.TokenOpen)
                 parameters = ()
                 while True:
@@ -62,11 +64,14 @@ class Parser(object):
                 expr = absy.Apply(token.lexeme, parameters)
                 state = state.skip(lexer.TokenClose)
             else:
+                # This is a variable
                 expr = absy.Variable(token.lexeme)
 
         elif isinstance(token, lexer.TokenIf):
+            # This is conditional expression
             expr, state = state.parse_conditional()
         elif isinstance(token, lexer.TokenNat):
+            # This is natural number constant
             expr = absy.Nat(token.lexeme)
         else:
             print "This should not happen"
@@ -113,9 +118,9 @@ class Parser(object):
             if isinstance(state.tokens[0], token_class):
                 break
         else:
-            # No token class was matched, raise exception. Note that as parsing
-            # is very strict it does not make much sense to gather all error messages
-            # as the subsequent ones don't make much sense
+            # No token class was matched, raise exception.
+            # Note that as parsing is very strict it does not make much sense to
+            # gather all error messages because the subsequent ones don't make much sense.
             raise ParseError("Got " + state.tokens[0].__class__.__name__ + ", was expecting " + " or ".join([token_class.__name__ for token_class in token_classes]), state.tokens[0])
         return state.tokens[0], Parser(state.tokens[1:])
         

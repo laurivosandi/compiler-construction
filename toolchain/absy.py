@@ -3,23 +3,55 @@
 Abstract syntax tree classes
 """
 
-class Value(object):
+class Node(object):
+    pass
+
+class Value(Node):
+    def evaluate(self, *args):
+        return self.value
+    
+class Expr(Node):
     pass
     
-class Expr(object):
+class Type(Node):
     pass
     
-class Type(object):
-    pass
+class Definition(Node):
+    def __init__(self, name, args, return_type, body):
+        self.name = name
+        self.args = args
+        self.return_type = return_type
+        self.body = body
+        
+    def evaluate(self, parameters, gctx={}):
+        lctx = dict(zip([a.name_token.lexeme for a in self.args], parameters))
+        return self.body.evaluate(lctx, gctx)
+
+    def __repr__(self):
+        return "DEF " + self.name + "(" + ", ".join([repr(j) for j in self.args]) + "):" + self.return_type + " == " + repr(self.body)
+
+class Apply(Node):
+    def __init__(self, func_name, parameters):
+        self.func_name = func_name
+        self.parameters = parameters
+        
+    def evaluate(self, lctx={}, gctx={}):
+        return gctx[self.func_name].evaluate([p.evaluate(lctx, gctx) for p in self.parameters], gctx)
+        
+    def __repr__(self):
+        return self.func_name + "(" + ", ".join([repr(j) for j in self.parameters]) + ")"
     
-class Variable(object):
+class Variable(Node):
     def __init__(self, name):
         self.name = name
+        
+    def evaluate(self, lctx={}, gctx={}):
+        return lctx[self.name]
         
     def __repr__(self):
         return self.name
         
-class Argument(object):
+class Argument(Node):
     def __init__(self, name_token, type_token):
         self.name_token = name_token
         self.type_token = type_token
@@ -48,16 +80,9 @@ class Nat(Value):
 
     def __repr__(self):
         return str(self.value)
-
-class Definition():
-    def __init__(self, name, args, return_type, body):
-        self.name = name
-        self.args = args
-        self.return_type = return_type
-        self.body = body
-
-    def __repr__(self):
-        return "DEF " + self.name + "(" + ", ".join([repr(j) for j in self.args]) + "):" + self.return_type + " == " + repr(self.body)
+        
+    def evaluate(self, lctx={}, gctx={}):
+        return self.value
 
 class Conditional(Expr):
     def __init__(self, expr_if, expr_then, expr_else=None):
@@ -67,14 +92,12 @@ class Conditional(Expr):
         
     def __repr__(self):
         return "IF " + repr(self.expr_if) + " THEN " + repr(self.expr_then) + ((" ELSE " + repr(self.expr_else)) if self.expr_else else "") + " FI"
-
-class Apply():
-    def __init__(self, func_name, parameters):
-        self.func_name = func_name
-        self.parameters = parameters
         
-    def __repr__(self):
-        return self.func_name + "(" + ", ".join([repr(j) for j in self.parameters]) + ")"
+    def evaluate(self, lctx={}, gctx={}):
+        if self.expr_if.evaluate(lctx, gctx):
+            return self.expr_then.evaluate(lctx, gctx)
+        else:
+            return self.expr_else.evaluate(lctx, gctx)
 
 class TypeBool(Type):
     pass
