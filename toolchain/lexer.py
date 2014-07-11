@@ -55,13 +55,13 @@ class TokenElse(Token):
 class TokenFi(Token):
     REGEX = "FI"
 
-class TokenBool(Token):
+class TokenBoolean(Token):
     pass
 
-class TokenTrue(TokenBool):
+class TokenTrue(TokenBoolean):
     REGEX = "true"
 
-class TokenFalse(TokenBool):
+class TokenFalse(TokenBoolean):
     REGEX = "false"
 
 class TokenNat(Token):
@@ -75,9 +75,6 @@ class TokenTypeNat(TokenType):
 
 class TokenIdentifier(Token):
     REGEX = "\w+[\w\d]*"
-
-class TokenMain(TokenIdentifier):
-    REGEX = "MAIN"
 
 class TokenEndOfFile(Token):
     REGEX = "$"
@@ -93,7 +90,6 @@ TOKENS = \
     TokenComma, \
     TokenColon, \
     TokenDefAs, \
-    TokenMain, \
     TokenDef, \
     TokenIf, \
     TokenThen, \
