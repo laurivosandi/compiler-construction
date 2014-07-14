@@ -61,11 +61,11 @@ class Parser(object):
                     if state.peek(lexer.TokenClose):
                         break
 
-                expr = absy.Apply(token.lexeme, parameters)
+                expr = absy.Apply(token.lexeme, parameters, token)
                 state = state.skip(lexer.TokenClose)
             else:
                 # This is a variable
-                expr = absy.Variable(token.lexeme)
+                expr = absy.Variable(token.lexeme, token)
 
         elif isinstance(token, lexer.TokenIf):
             # This is conditional expression
@@ -82,22 +82,26 @@ class Parser(object):
         """
         Parse function definition
         """
-        function_name_identifier, state = state.skip(lexer.TokenDef).pop(lexer.TokenIdentifier)
-        state = state.skip(lexer.TokenOpen)
+        def_token, state = state.pop(lexer.TokenDef)
+        function_name_identifier, state = state.pop(lexer.TokenIdentifier)
         arguments = ()
-        while state.peek(lexer.TokenIdentifier):
-            argument_token, state = state.pop(lexer.TokenIdentifier)
-            type_token, state = state.skip(lexer.TokenColon).pop(lexer.TokenType)
-            arguments = arguments + (absy.Argument(argument_token, type_token),)
-            if state.peek(lexer.TokenComma):
-                state.pop(lexer.TokenComma)
-                continue
-            elif state.peek(lexer.TokenClose):
-                break
         
-        return_type, state = state.skip(lexer.TokenClose).skip(lexer.TokenColon).pop(lexer.TokenType)
+        if state.peek(lexer.TokenOpen):
+            state = state.skip(lexer.TokenOpen)
+            if state.peek(lexer.TokenIdentifier):
+                while True:
+                    argument_token, state = state.pop(lexer.TokenIdentifier)
+                    type_token, state = state.skip(lexer.TokenColon).pop(lexer.TokenType)
+                    arguments = arguments + ((argument_token.lexeme, type_token.lexeme),)
+                    token, state = state.pop(lexer.TokenClose, lexer.TokenComma)
+                    if isinstance(token, lexer.TokenClose):
+                        break
+            else:
+                state = state.skip(lexer.TokenClose)
+        
+        return_type, state = state.skip(lexer.TokenColon).pop(lexer.TokenType)
         body_expression, state = state.skip(lexer.TokenDefAs).parse_expression()
-        return absy.Definition(function_name_identifier.lexeme, arguments, return_type.lexeme, body_expression), state
+        return absy.Definition(function_name_identifier.lexeme, arguments, return_type.lexeme, body_expression, def_token), state
     
     def parse(state):
         """
