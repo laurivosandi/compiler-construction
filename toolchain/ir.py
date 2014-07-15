@@ -34,7 +34,7 @@ class Push(Instruction):
     def __repr__(self):
         return "%s(%s)" % (self.mnemonic, self.name)
        
-class Call(Instruction):
+class PushAddr(Instruction):
     def __init__(self, target):
         if isinstance(target, Label):
             self.target = target.name
@@ -42,14 +42,17 @@ class Call(Instruction):
             self.target = target
         
     def __repr__(self):
-        return self.mnemonic + "(" + self.target + ")"
+        return "%s(%s)" % (self.mnemonic, self.target)
 
-class Jump(Call):
+class Jump(PushAddr):
     mnemonic = "Jmp"
         
-class ConditionalJump(Call):
+class ConditionalJump(PushAddr):
     mnemonic = "Jz"
 
+class Call(Instruction):
+    pass
+    
 class Return(Instruction):
     mnemonic = "Ret"
     

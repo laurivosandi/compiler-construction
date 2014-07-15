@@ -72,7 +72,7 @@ class Environment(object):
                     raise Exception("Don't know how to compile built-in %s" % node.func_name)
 
             else:
-                return env.push(ir.Call(node.func_name))
+                return env.push(ir.PushAddr(node.func_name)).push(ir.Call())
 
                 # Pop parameters?
             
@@ -96,6 +96,8 @@ class Environment(object):
             env_else = Environment(env.gctx, env.stack, ()).push(label_else).compile(node.expr_else).push(label_end)
             #assert len(env_then.stack) == len(env_else.stack), "This should not happen, %s in then stack and %s in else stack" % (env_then.stack, env_else.stack)
             
+            # slide both stacks have env.stack variables?
+            
             # Merge instruction branches and add placeholder for conditional return value
             return Environment(env.gctx, env.stack + ("cond%d" % id(env),), env.instructions + env_then.instructions + env_else.instructions)
 
@@ -104,16 +106,31 @@ class Environment(object):
 
             
 def compile_program(gctx):
-    for i  in Environment(gctx).compile(gctx["MAIN"].body):
-        yield i
-    yield ir.Stop()
-    for label, d in gctx.iteritems():
-        if not isinstance(d, absy.DefinitionBuiltin) and label != "MAIN":
-            yield ir.Label(label)
-            arg_names = tuple([arg_name for arg_name, arg_type in d.args])
-            for i in Environment(gctx, arg_names).compile(d.body): yield i
-            yield ir.Return()
+    def compile_with_labels():
+        for i  in Environment(gctx).compile(gctx["MAIN"].body):
+            yield i
+        yield ir.Stop()
+        for label, d in gctx.iteritems():
+            if not isinstance(d, absy.DefinitionBuiltin) and label != "MAIN":
+                yield ir.Label(label)
+                arg_names = tuple([arg_name for arg_name, arg_type in d.args])
+                for i in Environment(gctx, arg_names).compile(d.body): yield i
+                yield ir.Return()
 
+    def scrub():
+        offsets = {}
+        instructions = ()
+        for i in compile_with_labels():
+            if isinstance(i, ir.Label):
+                offsets[i.name] = len(instructions)
+            else:
+                instructions = instructions + (i,)
+        for i in instructions:
+            if isinstance(i, ir.PushAddr):
+                i.target = offsets[i.target]
+        return instructions
+            
+    return scrub()
 
 if __name__ == "__main__":
     filename, = sys.argv[1:]
