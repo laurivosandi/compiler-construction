@@ -60,10 +60,6 @@ class Definition(Node):
         lctx = dict(zip([arg_name for arg_name, arg_type in self.args], parameters))
         return self.body.evaluate(lctx, gctx)
         
-    def compile(self, gctx):
-        for instruction in self.body.compile(gctx):
-            yield instruction
-            
     def __repr__(self):
         return "DEF " + self.name + "(" + ", ".join([arg_name + ":"+ arg_type for arg_name, arg_type in self.args]) + "):" + self.return_type + " == " + repr(self.body)
 
@@ -73,6 +69,7 @@ class DefinitionBuiltin(Definition):
     
     def __init__(self):
         pass
+        
         
 class Apply(Node):
     def __init__(self, func_name, parameters, token):
@@ -107,17 +104,6 @@ class Apply(Node):
         """
         return gctx[self.func_name].evaluate([p.evaluate(lctx, gctx) for p in self.parameters], gctx)
         
-    def compile(self, gctx):
-#        print "Compiling:", self, gctx[self.func_name]
-        for param in self.parameters:
-            for i in param.compile(gctx): yield i
-        if isinstance(gctx[self.func_name], DefinitionBuiltin):
-            for instruction in gctx[self.func_name].compile(gctx):
-                yield instruction
-        else:
-            yield ir.Call(self.func_name)
-                
-        
     def __repr__(self):
         return self.func_name + "(" + ", ".join([repr(j) for j in self.parameters]) + ")"
     
@@ -141,10 +127,6 @@ class Variable(Node):
     def check(self, gctx, lctx):
         if self.name not in lctx:
             yield self.token, "Variable not defined in local context"
-            
-    def compile(self, gctx):
-        yield ir.Push(self.name)
-        
 
 class Boolean(Value):
     def __init__(self, value):
@@ -170,9 +152,7 @@ class Nat(Value):
         
     def evaluate(self, lctx={}, gctx={}):
         return self.value
-        
-    def compile(self, gctx):
-        yield ir.PushInt(self.value)
+
 
 class Conditional(Expr):
     def __init__(self, expr_if, expr_then, expr_else=None):
@@ -199,18 +179,5 @@ class Conditional(Expr):
             yield d, err
         for d, err in self.expr_else.check(gctx, lctx):
             yield d, err        
-            
-    def compile(self, gctx):
-        label_else = ir.Label("else%d" % id(self))
-        label_end = ir.Label("end%d" % id(self))
-        for i in self.expr_if.compile(gctx): yield i
-        yield ir.PushInt(0)
-        yield ir.Eq() # Compare 0 to number previously on top of stack
-        yield ir.ConditionalJump(label_else)
-        for i in self.expr_then.compile(gctx):
-            yield i
-        yield ir.Jump(label_end)
-        yield label_else
-        for i in self.expr_else.compile(gctx): yield i
-        yield label_end
+
         

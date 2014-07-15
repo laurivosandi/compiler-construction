@@ -15,9 +15,6 @@ class DefinitionEq(DefinitionBuiltin):
     def evaluate(self, parameters, gctx):
         a, b = parameters
         return a == b
-        
-    def compile(self, gctx):
-        yield ir.Eq()
 
 class DefinitionMul(DefinitionBuiltin):
     name = "mul"
@@ -28,10 +25,6 @@ class DefinitionMul(DefinitionBuiltin):
         a, b = parameters
         return a * b
 
-    def compile(self, gctx):
-        yield ir.Mul()
-
-
 class DefinitionSub(DefinitionBuiltin):
     name = "sub"
     return_type = "nat"
@@ -40,10 +33,6 @@ class DefinitionSub(DefinitionBuiltin):
     def evaluate(self, parameters, gctx):
         a, b = parameters
         return a - b
-        
-    def compile(self, gctx):
-        yield ir.Sub()
-
 
 class DefinitionAdd(DefinitionBuiltin):
     name = "add"
@@ -54,10 +43,6 @@ class DefinitionAdd(DefinitionBuiltin):
         a, b = parameters
         return a + b
 
-    def compile(self, gctx):
-        yield ir.Add()
-
-
 class DefinitionLessThan(DefinitionBuiltin):
     name = "lt"
     return_type = "nat"
@@ -66,7 +51,4 @@ class DefinitionLessThan(DefinitionBuiltin):
     def evaluate(self, parameters, gctx):
         a, b = parameters
         return a < b
-
-    def compile(self, gctx):
-        yield ir.Lt()
         
