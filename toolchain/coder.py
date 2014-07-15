@@ -12,94 +12,101 @@ import ir
 import builtin
 
 class Environment(object):
-    def __init__(self, *variables):
+    """
+    Environment hold compiler state: what functions are available,
+    what's in the stack and what instructions have been issued so far.
+    """
+    def __init__(self, gctx, stack=(), instructions=()):
+        self.gctx = gctx
+        self.stack = stack
+        self.instructions = instructions
         
-        self.stack = variables
-            
-        print "# Created environment:", self.stack
-        
-    def push_constant(self, constant):
-        self.stack.append(constant)
+    def push_constant(env, constant):
+        constant = int(constant) # Coarse True/False to 1/0
+        return Environment(env.gctx, env.stack + (constant,), env.instructions + (ir.PushInt(constant),))
     
-    def push_var(self, name):
-        if self.stack[-1] != name:
-            self.stack.append(name)
-        if name not in self.stack: raise Exception("Variable not present in stack!")
-        yield Slide(reversed(self.stack).index(name))
+    def push_var(env, name):
+        if name not in env.stack: raise Exception("Variable not present in stack!")
+        if env.stack[-1] != name:
+            offset = tuple(reversed(env.stack)).index(name) + 1
+            return Environment(env.gctx, env.stack + (name,), env.instructions + (ir.Push(offset),))
+        else:
+            return env
         
-    def compile(self, node, gctx):
+    def push(self, instruction):
+        stack = self.stack
+        if isinstance(instruction, absy.DefinitionBuiltin): # Operands will be replaced with result
+            stack = self.stack[:-1] # pop stack
+        return Environment(self.gctx, self.stack, self.instructions + (instruction,))
+        
+    def __iter__(self):
+        return iter(self.instructions)
+        
+    def compile(env, node):
         if isinstance(node, absy.Variable):
             # is is further in stack push i-th node
-            yield ir.Push(node.name)
+            return env.push_var(node.name)
             
-        elif isinstance(node, absy.Nat):
-            yield ir.PushInt(node.value)
+        elif isinstance(node, absy.Nat) or isinstance(node, absy.Boolean):
+            return env.push_constant(node.value)
 
         elif isinstance(node, absy.Apply):
             # Push function application arguments to stack
+            
             for param in reversed(node.parameters):
-                for i in self.compile(param, gctx): yield i
+                env = env.compile(param)
                 
-            d = gctx[node.func_name]
+            d = env.gctx[node.func_name]
             if isinstance(d, absy.DefinitionBuiltin):
                 if isinstance(d, builtin.DefinitionEq):
-                    yield ir.Eq()
+                    return env.push(ir.Eq())
                 elif isinstance(d, builtin.DefinitionLessThan):
-                    yield ir.Lt()
+                    return env.push(ir.Lt())
                 elif isinstance(d, builtin.DefinitionAdd):
-                    yield ir.Add()
+                    return env.push(ir.Add())
                 elif isinstance(d, builtin.DefinitionSub):
-                    yield ir.Sub()
+                    return env.push(ir.Sub())
                 elif isinstance(d, builtin.DefinitionMul):
-                    yield ir.Mul()
+                    return env.push(ir.Mul())
                 else:
                     raise Exception("Don't know how to compile built-in %s" % node.func_name)
 
             else:
-                yield ir.Call(node.func_name)
+                return env.push(ir.Call(node.func_name))
 
                 # Pop parameters?
             
         elif isinstance(node, absy.Conditional):
-            label_else = ir.Label("else%d" % id(self))
-            label_end = ir.Label("end%d" % id(self))
+            label_else = ir.Label("else%d" % id(env))
+            label_end = ir.Label("end%d" % id(env))
             
             # If the expr_if is eq(_, 0) then we can skip some stuff
             optimize = isinstance(node.expr_if, absy.Apply) and node.expr_if.func_name == "eq" and isinstance(node.expr_if.parameters[1], absy.Nat) and node.expr_if.parameters[1].value == 0
             
             if not optimize:
-                yield ir.PushInt(0)
+                env = env.push(ir.PushInt(0))
             
-            for i in self.compile(node.expr_if, gctx):
-                yield i
+            env = env.compile(node.expr_if)
                 
             if not optimize:
-                yield ir.Eq() # Compare 0 to number previously on top of stack
-                
-            yield ir.ConditionalJump(label_else)
-            for i in self.compile(node.expr_then, gctx):
-                yield i
-            yield ir.Jump(label_end)
-            yield label_else
-            for i in self.compile(node.expr_else, gctx): yield i
-            yield label_end
+                env = env.push(ir.Eq()) # Compare 0 to number previously on top of stack
 
-    #    elif isinstance(node, absy.Boolean):
-    #        return ir.PushInt(1 if self.value else 0)
+            
+            return env.push(ir.ConditionalJump(label_else)).compile(node.expr_then).push(ir.Jump(label_end)).push(label_else).compile(node.expr_else).push(label_end)
 
         else:
             raise Exception("Don't know how to compile: %s of class %s" % (node, node.__class__.__name__))
 
             
 def compile_program(gctx):
-    for i  in Environment().compile(gctx["MAIN"].body, gctx):
+    for i  in Environment(gctx).compile(gctx["MAIN"].body):
         yield i
     yield ir.Stop()
     for label, d in gctx.iteritems():
         if not isinstance(d, absy.DefinitionBuiltin) and label != "MAIN":
             yield ir.Label(label)
-            arg_names = [arg_name for arg_name, arg_type in d.args]
-            for i in Environment(*arg_names).compile(d.body, gctx): yield i
+            arg_names = tuple([arg_name for arg_name, arg_type in d.args])
+            for i in Environment(gctx, arg_names).compile(d.body): yield i
             yield ir.Return()
 
 
