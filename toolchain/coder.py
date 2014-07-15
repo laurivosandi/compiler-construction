@@ -91,8 +91,13 @@ class Environment(object):
             if not optimize:
                 env = env.push(ir.Eq()) # Compare 0 to number previously on top of stack
 
+            # Stack persists for both branches, start from scratch for instructions
+            env_then = Environment(env.gctx, env.stack, ()).push(ir.ConditionalJump(label_else)).compile(node.expr_then).push(ir.Jump(label_end))
+            env_else = Environment(env.gctx, env.stack, ()).push(label_else).compile(node.expr_else).push(label_end)
+            #assert len(env_then.stack) == len(env_else.stack), "This should not happen, %s in then stack and %s in else stack" % (env_then.stack, env_else.stack)
             
-            return env.push(ir.ConditionalJump(label_else)).compile(node.expr_then).push(ir.Jump(label_end)).push(label_else).compile(node.expr_else).push(label_end)
+            # Merge instruction branches and add placeholder for conditional return value
+            return Environment(env.gctx, env.stack + ("cond%d" % id(env),), env.instructions + env_then.instructions + env_else.instructions)
 
         else:
             raise Exception("Don't know how to compile: %s of class %s" % (node, node.__class__.__name__))
