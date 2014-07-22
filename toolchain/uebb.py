@@ -8,7 +8,7 @@ def interpret(instructions):
         total += 1
         i = instructions[pc]
         pc += 1
-        print "Issuing %d. %s" % (pc, i)
+        print ("Issuing %02d. %s" % (pc, i)).ljust(30),
         if isinstance(i, ir.PushInt):
             stack.append(i.value)
         elif isinstance(i, ir.PushAddr):
@@ -49,6 +49,6 @@ def interpret(instructions):
                 raise RuntimeError("Expected stack to contain 1 element, got %d" % len(stack))
         else:
             raise RuntimeError("Unknown instruction: %s" % i)
-        print stack
+        print "  stack:", ", ".join([str(i) for i in stack])
     raise RuntimeError("VM timed out")
 
