@@ -72,6 +72,9 @@ class TokenType(Token):
 
 class TokenTypeNat(TokenType):
     REGEX = "nat"
+    
+class TokenTypeBool(TokenType):
+    REGEX = "bool"
 
 class TokenIdentifier(Token):
     REGEX = "\w+[\w\d]*"
@@ -99,6 +102,7 @@ TOKENS = \
     TokenFalse, \
     TokenNat, \
     TokenTypeNat, \
+    TokenTypeBool, \
     TokenIdentifier, \
     TokenComment
     

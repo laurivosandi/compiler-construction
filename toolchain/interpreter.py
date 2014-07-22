@@ -9,15 +9,18 @@ import lexer
 from parser import Parser
 from ctxcheck import context_check
 
-if __name__ == "__main__":
-    filename, = sys.argv[1:]
+def interpret(filename):
     tokens = tuple(lexer.tokenize(filename))
-    defs, state = Parser(tokens).parse()
+    defs, state = Parser(*tokens).parse()
     gctx, errors = context_check(defs)
 
     if errors:
         for node, msg in errors:
             print msg, "on line", node.line, "column", node.column
-                
+
     else:
-        print "The MAIN function returned:",  gctx["MAIN"].evaluate({}, gctx)
+        return gctx["MAIN"].evaluate({}, gctx)
+
+if __name__ == "__main__":
+    filename, = sys.argv[1:]
+    print "The MAIN function returned:",  interpret(filename)

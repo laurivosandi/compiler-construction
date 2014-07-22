@@ -52,3 +52,13 @@ class DefinitionLessThan(DefinitionBuiltin):
         a, b = parameters
         return a < b
         
+
+class DefinitionDiv(DefinitionBuiltin):
+    name = "div"
+    return_type = "nat"
+    args = ("a", "nat"), ("b", "nat")
+    
+    def evaluate(self, parameters, gctx):
+        a, b = parameters
+        return a / b
+        

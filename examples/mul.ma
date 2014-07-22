@@ -1,0 +1,10 @@
+PushInt(6)
+PushInt(5)
+PushAddr(6)
+Call
+Slide(2)
+Stop
+Push(1)
+Push(3)
+Mul
+Ret
