@@ -90,10 +90,6 @@ class Apply(Node):
         if self.func_name not in gctx:
             yield self.token, "Could not resolve function named %s" % self.func_name
         return
-        # TODO: unification?
-#        for d, err in gctx[self.func_name].check_application([lctx[j] for j in self.parameters]):
-#            yield d, err
-
         
     def infer_type(self):
         return gctx[self.func_name].return_type

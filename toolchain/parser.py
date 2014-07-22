@@ -177,7 +177,8 @@ class Parser(object):
         
     def peek(state, token_class):
         return isinstance(state.head, token_class)
-        
+
+
     def skip(state, *token_classes):
         token, state = state.pop(*token_classes)
         return state

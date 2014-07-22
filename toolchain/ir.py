@@ -81,6 +81,10 @@ class Jump(Instruction):
     
 class ConditionalJump(Jump):
     mnemonic = "Jz"
+    
+class Swap(Instruction):
+    pass
+
 
 """
 Binary operators consumne two items from the top of the stack
@@ -109,5 +113,4 @@ class Lt(BinaryOperator):
 
 class Div(BinaryOperator):
     pass
-
 

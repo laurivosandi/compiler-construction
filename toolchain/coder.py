@@ -23,7 +23,8 @@ BUILTIN_MAPPING = {
 def elaborate(func):
     def wrapped(old_env, node):
         env = func(old_env, node)
-        print "Compiled node", node, "to", env.instructions[-len(env.instructions)+len(old_env.instructions):], env.stack
+        print "Compiled node", node, "to", env.instructions[-len(env.instructions)+len(old_env.instructions):]
+        print "=> Stack:", env.stack
         return env
     return wrapped
 
@@ -63,13 +64,13 @@ class Environment(object):
         elif isinstance(instruction, ir.Slide):
             assert len(stack) > instruction.offset, "Stack is %s, attempted to slide by %d" % (stack, instruction.offset)
             stack = stack[:-instruction.offset-1] + stack[-1:]
-        print "==> Pushed instruction", instruction, "stack was:", self.stack, "stack is now:", stack
+        print "Issued instruction", instruction #, "stack was:", self.stack,
+        print "=> Stack:", stack
         return Environment(self.gctx, stack, self.instructions + (instruction,))
         
     def __iter__(self):
         return iter(self.instructions)
         
-    @elaborate
     def compile(env, node):
         if isinstance(node, absy.Variable):
             # is is further in stack push i-th node
@@ -79,23 +80,23 @@ class Environment(object):
             return env.push_constant(node.value)
 
         elif isinstance(node, absy.Apply):
-
-
-
             # Resolve function definition
             d = env.gctx[node.func_name]
             
             assert len(node.parameters) == len(d.args), "Invalid invocation of %s" % node.func_name
 
             # Push function application arguments to stack            
-            for param in reversed(node.parameters):
+            for param in  node.parameters:
                 env = env.compile(param)
-                print "Pushed function call parameter:", param, "stack is now:", env.stack
+#                print "Pushed function call parameter:", param, "stack is now:", env.stack
             
             if isinstance(d, absy.DefinitionBuiltin):
                 for dc, ic in BUILTIN_MAPPING.iteritems():
                     if  isinstance(d, dc):
-                        return env.push(ic())
+                        instruction = ic()
+                        if isinstance(instruction, ir.Sub) or isinstance(instruction, ir.Div): # TODO Builtins are swappe in Machine JAR
+                            env = env.push(ir.Swap())
+                        return env.push(instruction)
                 raise Exception("Don't know how to compile built-in %s" % d.name)
 
             else:
@@ -140,7 +141,7 @@ def compile_program(gctx):
     def compile_with_labels():
         print "Compiling function MAIN"
         for i  in Environment(gctx).compile(gctx["MAIN"].body):
-            print "Produced instruction", i
+            print i
             yield i
         yield ir.Stop()
         print
@@ -150,7 +151,7 @@ def compile_program(gctx):
                 yield ir.Label(label)
                 arg_names = tuple([arg_name for arg_name, arg_type in d.args])
                 for i in Environment(gctx, arg_names + ("ReturnAddress",)).compile(d.body).push(ir.Return()):
-                    print "Produced instruction", i
+                    print i
                     yield i
                 print
 
@@ -170,9 +171,8 @@ def compile_program(gctx):
         return instructions
             
     return scrub()
-
-if __name__ == "__main__":
-    filename, = sys.argv[1:]
+    
+def uebb_compile(filename):
     tokens = tuple(lexer.tokenize(filename))
     defs, state = Parser(*tokens).parse()
     gctx, errors = context_check(defs)
@@ -186,4 +186,10 @@ if __name__ == "__main__":
         for i in compile_program(gctx):
             fh.write(repr(i) + "\n")
         fh.close()
+
+
+if __name__ == "__main__":
+    filenames = sys.argv[1:]
+    for filename in filenames:
+        uebb_compile(filename)
 
